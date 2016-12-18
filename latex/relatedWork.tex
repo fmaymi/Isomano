@@ -14,11 +14,23 @@ Analyzing Peripheral Interupts for Use in Embedded System Emulation
 \thispagestyle{empty}
 \pagestyle{empty}
 
-%\begin{abstract}
-%\end{abstract}
+\begin{abstract}
+The state of security for embedded systems is . Emulation of embedded systems, however, is severly limited. We take a first step towards true emulation of an embedded system by using symbolic execution to identify the peripheral interupts of Econotag, a very simple embedded system.
+\end{abstract}
+
+\section{Introduction}
+
+
+\section{Method}
+
+\section{Conclusion}
+\subsection{Results}
+\subsection{Limitation and Future Work}
+-Needs vector table value and address in advance
+-Generalize to arbitrary binary
 
 \section{Related work}
-Embedded devices are woefully insecure and vulnerable, and there are several studies in the current literature which corroborate this statement. For example, in 2014 a French research group used basic symbolic execution techniques to discover 38 new vulnerabilities in 693 firmware samples \cite{acostin}. Additionally, in 2013 a research group at Columbia demonstrated a general purpose methodology for leveraging vulnerable firmware update mechanisms on many embedded devices \cite{acui}. As such, there is need for new and effective methods to analyze firmware images dynamically. We believe our tool represents one of the first steps towards an effective and generalized solution for emulating embedded devices, ultimately facilitating the dynamic analysis of embedded firmware images. Considering this larger goal, our work is just one small part, namely mapping interrupt numbers to the specific interrupt handlers that they trigger. In this very specific context, as far as we know, no previous work has attempted to solve the same problem. That said, there is a large body of existing research into the dynamic analysis of embedded devices and their overall security.
+There are several studies in the current literature which outline the insufficient security on embedded systems. For example, in 2014 a French research group used basic symbolic execution techniques to discover 38 new vulnerabilities in 693 firmware samples \cite{acostin}. Additionally, in 2013 a research group at Columbia demonstrated a general purpose methodology for leveraging vulnerable firmware update mechanisms on many embedded devices \cite{acui}. As such, there is need for new and effective methods to analyze firmware images dynamically. We believe our tool represents one of the first steps towards an effective and generalized solution for emulating embedded devices, ultimately facilitating the dynamic analysis of embedded firmware images. Considering this larger goal, our work is just one small part, namely mapping interrupt numbers to the specific interrupt handlers that they trigger. In this very specific context, as far as we know, no previous work has attempted to solve the same problem. That said, there is a large body of existing research into the dynamic analysis of embedded devices and their overall security.
 
 The classical way of dynamically analyzing an embedded device requires the firmware to be executed on the hardware itself, with a hardware debugger attached. JTAG \cite{jtag} is the standard developed by IEEE for these debuggers. Analyzing firmware images in this way is limited in several capacities. First of all, hardware debuggers are difficult to work with, and especially difficult to integrate into existing dynamic analysis platforms. Furthermore, when working with hardware debuggers, there is the possibility that your test and analyses might bring the device into an improper state, causing damage to the hardware itself. Finally, analyzing directly on hardware is an unscalable solution, as for every firmware image you want to analyze, you need a corresponding piece of hardware, which can get expensive and logistically problematic. 
 
