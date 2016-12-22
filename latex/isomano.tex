@@ -1,5 +1,6 @@
 \documentclass[letterpaper, 10 pt, conference]{ieeeconf}
 \usepackage{cite}
+\usepackage{caption}
 \usepackage{multirow}
 
 \title{\LARGE \bf
@@ -15,77 +16,115 @@ Analyzing Peripheral Interupts for Use in Embedded System Emulation
 \thispagestyle{empty}
 \pagestyle{empty}
 
-\begin{abstract}%Mention Embedasploit
-The state of security for embedded systems is decidedly lacking. Dynamic analysis can a powerful tool for improving this state but is limited by hardware requirements. We believe the solution is full system emulation, facilitated by high level emulation. We take a first step towards addressing this challenge with a tool that can map peripheral interrupt numbers to the interrupt handler that they trigger for the Redbee Econotag using a symbolic execution based approach that is likely applicable to more complicated systems.
+\begin{abstract}
+At present, security is decidedly lacking in embedded devices. Dynamic analysis can a powerful tool for exposing vulnerabilities and improving the security of these devices in general. Unfortunately, such analyses are often bottlenecked by the cost and scalability factors of dealing with physical hardware. We believe the solution is full system emulation, facilitated by high level modeling. We take a first step towards addressing this challenge with a tool that explores a simple firmware image via symbolic execution and maps interrupt numbers to the interrupt handlers that they trigger. We believe that this tool can be generalized further to work on a broader range of firmware images of varying degrees of complexity.
 \end{abstract}
 
 \section{Introduction}\label{intro}
-There are several studies in the current literature which outline the insufficient level of security in embedded systems. For example, in 2014 a French research group used basic symbolic execution techniques to discover 38 new vulnerabilities in 693 firmware samples \cite{acostin}. Additionally, in 2013 a research group at Columbia demonstrated a general purpose methodology for leveraging vulnerable firmware update mechanisms on many embedded devices \cite{acui}. We therefore need a more comprehensive and scalable solution to the security of embedded systems.
+Embedded devices are woefully insecure and vulnerable, and there are several studies in the current literature which corroborate this statement. For example, in 2014 a French research group used basic symbolic execution techniques to discover 38 new vulnerabilities in 693 firmware samples \cite{acostin}. Additionally, in 2013 a research group at Columbia demonstrated a general purpose methodology for leveraging vulnerable firmware update mechanisms on many embedded devices \cite{acui}. As such, there is need for new and effective methods to analyze firmware images dynamically. We believe our tool represents one of the first steps towards an effective and generalized solution for emulating embedded devices, ultimately facilitating the dynamic analysis of embedded firmware images.
 
 \subsection{Current Techniques for Analyzing Embedded Systems} \label{current}
 The classical way of dynamically analyzing an embedded device requires the firmware to be executed on the hardware itself, with a hardware debugger attached. Analyzing firmware images in this way is limited in several capacities. First of all, hardware debuggers are difficult to work with, and especially difficult to integrate into existing dynamic analysis platforms. Furthermore, when working with hardware debuggers, there is the possibility that your test and analyses might bring the device into an improper state, causing damage to the hardware itself. Finally, analyzing directly on hardware is an unscalable solution, as for every firmware image you want to analyze, you need a corresponding piece of hardware, which can get expensive and logistically problematic. Similarly, the hybrid solution Avatar \cite{avatar} facilitates the use of existing dynamic analyses on firmware images, but since the hardware is still used partially, it is not a scalable solution and may cause damage to the hardware.
 
-Given the limitation of hardware debuggers and hybrid solutions, we believe whole system emulation of embedded devices to be the only viable solution.
+\subsection{Embedasploit} \label{embed}
+Embedasploit is an attempt to develop a ``Red-Team in a Box'' for industrial control systems (ICS). ICS are built on the embedded systems we have discussed. As such they suffer from the same deficiencies in their security. These vulnerabilities can be dangerous as ICS are used in a variety of critical infrastructure systems, including power and water treatment plants. Embedasploit aims to tackle these vulnerabilities by making penetration testing of industrial control systems easier. Embedasploit largely consists of three components: a fingerprinting component, a vulnerability library and an exploit payload system. 
 
-\subsection{Embedasploit} \label{embed}%I'm liking this section. Now to get everything else to this point...
-Embedasploit is an attempt to develop a "Red-Team in a Box" for industrial control systems (ICS). ICS are built on the embedded systems we have discussed. As such they suffer from the same deficiencies in their security. These vulnerabilities can be extremely dangerous as ICS are used in a variety of critical infrasture systems, including power and water treatment plants. Embedasploit aims to tackle these vulnerabilities by making penetration testing of industrial control systems easier. Embedasploit largely consists of three components: a fingerprinting component, a vulnerability library and an exploit payload system. 
+Our work fits into that second component. Building that vulnerability library, while possible to do using the current methods discuss in Section \ref{current}, would be facilitated by a more scalable approach such as whole system emulation. Whole system emulation doesn't suffer from problems of scale (or potential hardware damage), because the physical hardware is removed from the equation entirely. Additionally, in an emulated environment, everything is implemented as software, meaning that anything can be modified or edited, allowing for easy instrumentation and dynamic analysis of firmware images. 
 
-Our work fits into that second component. Building that vulnerability library, while possible to do using the current methods discussed in Section \ref{current}, would be greatly facilitated by a more scaleble approach. Whole system emulation doesn't suffer from problems of scale (or potential hardware damage), because the physical hardware is removed from the equation entirely. Additionally, in an emulated environment, everything is implemented as software, meaning that anything can be modified or edited, allowing for easy instrumentation and dynamic analysis of firmware images. 
+To further increase simplicity and speed, we can punt on complex peripheral devices by using high level modeling. High level modeling replaces a software-hardware interface with a simple simulation. This reduce complexity but makes that interface unavailable to analysis. Our project takes a modest step towards this type of high level modeling by discovering information about how the firmware will respond to interrupts from peripherals.
 
-To further increase simplicity and speed, we can punt on complex peripheral devices by using high level emulation. High level emulation replaces a software-hardware interface with a high level simulation, reducing complexity at the cost of availability of that interface to analysis. Our project takes a modest step towards this type of high level emulation of embedded device peripherals by discovering information about interrupt signals a peripheral device might send and how the firmware will respond.
+\subsection{Concolic Testing and angr} \label{concolic}
+Our tool uses angr \cite{angr}, a concolic testing system, to map interrupt numbers to their handlers. Concolic testing combines concrete testing, which runs and tracks the performance of a program, with symbolic execution. Symbolic execution is a powerful technique which tracks the parameters of possible values through the execution of a program. This allows us to analyze firmware without all the necessary peripheral devices, by replacing their input with parameterized variables. Concolic execution combines these two approaches, using symbolic execution to find possible paths and generate inputs to concretely execute along. Angr provides a wide array of analytical capabilities, from static to dynamic, and from purely symbolic to concolic. It is also implemented as a python module, allowing it to be built into a script quickly and easily.
 
-\subsection{Concolic Testing and angr} \label{concolic} %Expand
-Our tool uses angr \cite{angr}, a concolic testing system, to map interrupt numbers to their handlers. Concolic testing combines concrete testing, which runs and tracks the performance of a program, with symbolic execution. Symbolic execution is a powerful technique which tracks the parameters of possible values through the execution of a program. This allows us to analyze firmware without all the necessary peripheral devices, by replacing their input with parameterized variables. Concolic execution combines these two approaches, using symbolic execution to find possible paths and generate inputs to concretely execute along. Angr is particularly powerful because it is both full featured and easy to use. 
+\subsection{Econotag} \label{econotag}
+The Econotag \cite{etag} is an open source and exceptionally simple example of an embedded system. It is built on MC13224v, an ARM7 micro-controller with an integrated radio. The fact that Econotag uses ARM poses a minor problem as there are a couple instruction that angr does not handle, fortunately it is easy to hook a function to those instruction, solving the problem. The Econotag has very few peripherals and it is surprisingly well-documented, making this a good device for testing our approach.
 
-%NEED MOAR ANGR!!!!!
+\section{Design \& Methodology} \label{method}
 
-\subsection{Econotag} \label{econotag}%Short but I'm REALLY having a hard time finding information on econotag or its base system
-The Econotag \cite{etag} is an open source and exceptionally simple example of an embedded system. It is built on MC13224v, an ARM7 micro-controller with an integrated radio. The fact that Econotag uses ARM poses a minor problem as there are a couple instruction that angr does not handle, fortunately it is easy to hook a function to those instruction, solving the problem. The Econotag has very few peripherals, making this a good device for testing our approach.
-
-\section{Method} \label{mthd}
 \subsection{Initial setup} \label{setup}
-Before symbolic execution can begin, there was some information and tweaking that needed to be done to get the symbolic execution to behave well. Because angr does not handle MRS/MSR instruction in ARM, it is necessary to hook in code to handle these instructions. These hooks and the location of the instructions were determined for us. Additionally we were provided with the vector table which was generated by running the firmware symbolically until interrupts were enabled. % Detail how this was determined
-The vector table was then output and put in the correct address by our program. 
+In order for our tool to successfully explore and symbolically execute the Econotag firmware image, a few initial steps had to be taken. The first such step was hooking the MSR and MRS instructions with a custom function to simulate their behavior. The MRS and MSR instructions are used to read and write respectively from the ARM CPSR (Current Program Status Register) and they are not directly supported by angr. The addresses of these instructions in the firmware were found using a simple combination of objdump and grep. Then, using angr’s built-in hooking functionality, we simulated these instructions using a high-level function written in Python.
+
+In order for the script to successfully map the interrupt numbers, the interrupt handler vector table must, of course, exist in memory. Unfortunately, in most firmwares, the interrupt vector table isn’t statically defined in the firmware’s ROM, but is rather loaded into memory at some point during the boot process. As such, in order for our tool’s exploration to be successful, the interrupt vector table must be pre-loaded into memory, which means we first need to determine the addresses in the vector table, as well as its base address. By running this firmware in PANDA \cite{panda} (a dynamic analysis platform), the firmware was able to get far enough into its boot process that memory could be dumped and the interrupt handler vector table could be recovered (see Table \ref{table:vector}).
+
+\begin{table}[h]
+\centering
+\begin{tabular}{r|p{4cm}}
+address in memory & handler addresses \\ \hline
+0x00400120 & 0x0001001d, 0x00003275, 0x0001001d, 0x00003f35 \\
+0x00400130& 0x0001001d, 0x0001001d, 0x0001001d, 0x004029d1 \\
+0x00400140 & 0x0001001d, 0x0001001d, 0x0001001d\\
+\end{tabular}
+\caption{Interrupt handler vector table}
+\label{table:vector}
+\end{table}
+
+Finally, in addition to the base address of the vector table, several other critical addresses had to be determined ahead of time, including the address to begin executing from (e.g. the address of the function which actually loads the handler addresses and jumps to them) and the address at which the interrupt number is read from. In our case, all three of these addresses were determined by a combination of consulting the documentation and examining the firmware in the IDA Pro disassembler.
+
+The base address, as indicated in the table above was found at 0x00400120. The function which loads handler addresses from the vector table was found to be at 0x0001082c. However, we actually start executing from 0x00010810, a function which jumps to 0x0001082c. We do this since 0x00010810 actually initializes some registers to non-zero values, and having zero-valued registers was giving us incorrect results later on in our exploration. In retrospect, we could have just started at 0x0001082c and initialized the registers to symbolic values ourselves. As for the address where the interrupt number is read from, instead of finding that explicitly, we instead identified an address (0x00010834) where register R0 is loaded with a symbolic value for the interrupt number.
 
 \subsection{Handler Mapping} \label{mapping}
-Once we have the environment set up, we symbolically execute until just before the interrupt handlers are called. Some firmware specific steps are needed here including manually entering constraints that angr misses and stepping to the exact location needed. Each possible interrupt number is then tested and paired with the address in the vector table that it calls.
+Having found the prerequisite information described in the previous section, our tool can explore and perform its mapping. We start by initializing an angr Project and State instance. The project manages all components and acts as a factory for generating all instances of other objects (state, path, pathgroup, etc.) relevant to the firmware. The state emulates the memory for the binary, keeps track of the constraints collected as execution progresses, and gives us access to a constraint solver for the symbolic variables we encounter. We add our hooks for each MRS and MSR instruction and set the entry point to be 0x00010810, the function just before the function which actually jumps to the interrupt handlers.
+
+Angr manages its executions through a binary using Path objects, and it allows for the management of several paths through a binary with a Path Group object. Using a Path and Path Group instance, we symbolically execute until we reach 0x00010834, the address just after register R0 has been loaded with the interrupt number. Since this is symbolic execution, the value stored in R0 is symbolic as well, representing all possible values for the interrupt number. 
+
+At this point, we store this symbolic value for later, and we also add a constraint to the state manually, namely that R0 is less than 0xB (11 in decimal). This step was necessary as angr seemingly failed to pick up the implied constraint of a CMP instruction at 0x00010834. Here, the firmware compares R0 (the interrupt number) to 0xB and only proceeds to execute four load/branch instructions if R0 was less than 0xB. We expect angr is failing to pick the constraint up due to the intermediary conditional loading instructions between CMP and BX and that it would get the constraint if these intermediary conditional instructions were all encapsulated within a separate conditional branch.
+
+With R0 recorded and the constraint set, we allow the execution of the path to step to the next basic block, which should be one of the interrupt handlers. The execution forks off into four possible Paths at the addresses seen in Table \ref{table:paths}
 
 \begin{table}[h]
 \centering
 \begin{tabular}{r|l}
-handler & number \\ \hline
+successor path & address \\ \hline
+Path 1 & 0x00003275 \\
+Path 2 & 0x00003f35 \\
+Path 3 & 0x001001d \\
+Path 4 & 0x04029d1 \\
+\end{tabular}
+\caption{Execution paths}
+\label{table:paths}
+\end{table}
+
+For each of these new paths, we utilize their state’s constraint solver to concretize the value of R0 we recorded earlier in the execution. After getting a concrete value for R0 we add the constraint that R0 is not equal to the value we just solved for. Then, we concretize R0 again. We repeat this process until R0 becomes unsatisfiable, meaning that no more possible values of R0 exists. In this way, we ensure that we have found an exhaustive list of all possible interrupt numbers for each path. 
+
+Using the addresses of these paths and the values of R0 we concretized, we get the mapping of interrupt handlers and numbers shown in Table \ref{table:results}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{r|l}
+handler address & number \\ \hline
 \multirow{2}{*}{0x0001001d} & 0, 2, 4, 5 \\ & 6, 8, 9, 10 \\
-%0x1001d & 0, 2, 4, 5, 6, 8, 9, 10 \\
 0x00003275 & 1 \\
 0x00003f35& 3 \\
 0x004029d1 & 7 \\
 \end{tabular}
-%\caption{Interrupt Handler and Number Mapping}
-%\label{table:results}
+\caption{Interrupt handler address \& number mapping}
+\label{table:results}
 \end{table}
 
-\section{Conclusion} \label{conclusion}
-The mapping between interrupt handlers and the interrupt numbers that trigger those handlers are in the above table.
+\section{Results} \label{results}
+As can be seen in the previous table, our tool identified four distinct handlers in the Econotag firmware at addresses 0x0001001d, 0x00003275, 0x00003f35 and 0x004029d1. Each handler was mapped to exactly one interrupt number, with the exception of the 0x0001001d handler, which was mapped to eight interrupt numbers. This is because 0x0001001d is just a “dummy” function meant as a placeholder for unused interrupt numbers. This handler just returns to the caller and does nothing else. Given that we loaded the interrupt vector table into memory manually, we know that our tool has indeed found all of the expected handlers. In addition, our manual analysis in IDA Pro confirms that the interrupt numbers should range from zero to ten.
 
-\subsection{Results} \label{results} %Work on time stuff
-Our tool delivered as expected. There were three interrupt numbers with unique handlers, the rest were tied to what appears to be a general purpose interrupt handler. Additionally, the program is relatively quick. Our code finishes pretty consistently within 1.2 seconds. The prerequisite task of retrieving the vector table, however took over 15 minutes. 
+Additionally, the program is relatively quick to run. Our code consistently finishes within 1.2 seconds. The prerequisite task of retrieving the vector table, however took over 15 minutes. 
 
-\subsection{Limitations and Future Work} \label{limits}
+\section{Limitations and Future Work} \label{limits}
 In terms of both functionality and polish, there are a number of modifications that could be made to our tool. In its current state, our program only works with the Econotag (in part because there was a bit of jury rigging needed to make this work), however the method itself is completely general. In theory our tool could be extended to map peripheral interrupt handlers for any embedded system which could in turn be used as part of an emulation system. Of course, the ultimate goal for this tool is for it to support a wide variety of embedded systems without extra tweaking. 
 
 Additionally some usability improvements are necessary to make the tool easier to use on a wider variety of embedded systems. In this vein, we could eliminate the need to know the vector table in advance by executing the firmware symbolically until interrupts are enabled and then proceeding with our current approach (skipping the step where we insert the vector table of course, its already there), however, it takes a considerable amount of time for the symbolic execution to reach the point where interrupts are enabled, adding significant overhead to the already slow program. One way to reduce this time is to store the vector table after it has been generated and insert it if it is available, this way the vector table would only have to be generated once.
 
-\section{Related Work} \label{relatedWork} %This section is looking a bit beat up after taking much of it for use in the intro. Need to rework
+\section{Related Work} \label{relatedWork}
 In the very specific context of our project, we know of no previous work attempting to solve the same problem. That said, there is a large body of existing research into the dynamic analysis of embedded devices and their overall security.
 
-The most common tool for dynamic analysis of embedded systems are hardware debuggers, particularly JTAG \cite{jtag}, the standard developed by IEEE. Another recently proposed alternative is Avatar \cite{avatar}, a dynamic analysis platform designed for firmware images. Avatar makes use of an existing general-purpose dynamic analysis platform known as S2E \cite{s2e} to emulate and analyze firmware images. In order to deal with the problem of poorly specified peripherals in embedded devices, Avatar forwards all attempted interactions with the peripherals in the S2E environment to the actual hardware, maintaining the hardware restriction. 
+The most common tool for dynamic analysis of embedded systems are hardware debuggers, particularly JTAG \cite{jtag}, the standard developed by IEEE. 
+A recently proposed alternative is Avatar \cite{avatar}, a dynamic analysis platform designed for firmware images. Avatar makes use of an existing general-purpose dynamic analysis platform known as S$^2$E \cite{s2e} to emulate and analyze firmware images. In order to deal with the problem of poorly specified peripherals in embedded devices, Avatar forwards all attempted interactions with the peripherals in the S$^2$E environment to actual hardware, leaving the hardware restrictions. 
 
-Whole system emulation of embedded systems will allow us to leverage powerful existing dynamic analysis platforms like PANDA \cite{panda}, which allows users to record and replay execution traces so that dynamic analysis can be performed out of sync with the execution itself, an idea first proposed by Chow et. al. at VMware \cite{jchow}. PANDA's dynamic analyses are built on top of QEMU \cite{qemu}, an open-source emulation platform supporting many different CPU architectures. 
+The whole system emulation of embedded systems we promote will allow us to leverage powerful existing dynamic analysis platforms like PANDA \cite{panda}, which allows users to record and replay execution traces so that dynamic analysis can be performed out of sync with the execution itself, an idea first proposed by Chow et. al. at VMware \cite{jchow}. PANDA's dynamic analyses are built on top of QEMU \cite{qemu}, an open-source emulation platform supporting many different CPU architectures. 
 
-%Now that we've established where our research fits into the big picture (embedded device emulation and dynamic analysis), we consider the narrower scope of the specific work presented in this paper, namely, mapping interrupt numbers to interrupt handlers via symbolic execution. 
-Symbolic execution \cite{jking} is a method of analyzing a program by executing on symbolic values, values which represent valid ranges or conditions. In contrast, concrete execution is 'business as usual', executing a program on real or concrete inputs. Symbolic execution allows a user to determine parameters for inputs that result in code execution along a given path. This neatly aligns with our needs, as we need to determine what inputs (interrupt numbers) lead to execution of which interrupt handlers. In addition, although often used interchangeably with symbolic execution, concolic execution \cite{ksen} is actually a hybrid technique wherein concrete inputs identify a single execution trace which is then explored symbolically. 
+Symbolic execution \cite{jking} is a method of analyzing a program by executing on symbolic values, values which represent valid ranges or conditions. In contrast, concrete execution is 'business as usual', executing a program on real or concrete inputs. Symbolic execution allows a user to determine parameters for inputs that result in code execution along a given path. In addition, although often used interchangeably with symbolic execution, concolic execution \cite{ksen} is actually a hybrid technique wherein concrete inputs identify a single execution trace which is then explored symbolically. 
 
-We chose to use the angr framework \cite{angr} for our analysis because of the general and under constrained symbolic execution options. Angr provides a wide array of analytical capabilities, from static to dynamic, and from purely symbolic to concolic. SimuVEX is angr's symbolic execution engine, which tracks the program state using a python based wrapper \cite{pyvex} of the intermediate representation VEX \cite{vex}. The dynamic symbolic execution is based on the techniques described in Mayhem \cite{mayhem} which is more memory efficient than other options, allowing us to execute the firmware long enough for it to populate things like interrupt handlers which may not be present in memory until after boot. Angr supplements Mayhem with the veritesting static symbolic execution system \cite{veritesting} which reduces the execution space when multiple paths would have the same result. Another feature of angr that may be useful is called Under Constrained Symbolic Execution (UCSE) \cite{ucklee2}, which allows individual functions to be analyzed, though at the cost of increased false positives. This feature is implemented in angr as UC-angr, and it is based on a previous tool called UC-KLEE \cite{ucklee1}, which itself was a UCSE enhancement on top of the dynamic symbolic execution tool KLEE \cite{klee}.
+SimuVEX is angr's symbolic execution engine, which tracks the program state using a python based wrapper \cite{pyvex} of the intermediate representation VEX \cite{vex}. The dynamic symbolic execution is based on the techniques described in Mayhem \cite{mayhem} which is more memory efficient than other options, allowing us to execute the firmware long enough for it to populate things like interrupt handlers which may not be present in memory until after boot. Angr supplements Mayhem with the veritesting static symbolic execution system \cite{veritesting} which reduces the execution space when multiple paths would have the same result. Another feature of angr that may be useful is called Under Constrained Symbolic Execution (UCSE) \cite{ucklee2}, which allows individual functions to be analyzed, though at the cost of increased false positives. This feature is implemented in angr as UC-angr, and it is based on a previous tool called UC-KLEE \cite{ucklee1}, which itself was a UCSE enhancement on top of the dynamic symbolic execution tool KLEE \cite{klee}.
+
+\section{Acknowledgements}
+We’d like to thank Prof. Brendan Dolan-Gavitt. In addition to providing us with an interesting project to work on he gave us a considerable head start and guidance throughout. Specifically, Prof. Dolan-Gavitt provided code that generates the vector table for the econotag firmware, the address for that vector table, a unified binary containing the Econotag firmware and ROM, and hooks for instructions in ARM that angr does not recognize. Some of these road blocks could have added days of work to our project so we are grateful for the assist.
 
 \bibliography{references}{}
 \bibliographystyle{plain}
