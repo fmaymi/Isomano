@@ -1,4 +1,4 @@
-\documentclass[letterpaper, 10 pt, conference]{ieeeconf}
+\documentclass[letterpaper, 11 pt, conference]{ieeeconf}
 \usepackage{cite}
 \usepackage{hyperref}
 \usepackage{caption}
@@ -51,9 +51,12 @@ In order for the script to successfully map the interrupt numbers, the interrupt
 \centering
 \begin{tabular}{r|p{4cm}}
 address in memory & handler addresses \\ \hline
-0x00400120 & 0x0001001d, 0x00003275, 0x0001001d, 0x00003f35 \\
-0x00400130& 0x0001001d, 0x0001001d, 0x0001001d, 0x004029d1 \\
-0x00400140 & 0x0001001d, 0x0001001d, 0x0001001d\\
+0x00400120: & 0x0001001d 0x00003275 \\ 
+0x00400128: & 0x0001001d 0x00003f35 \\
+0x00400130: & 0x0001001d 0x0001001d \\
+0x00400138: & 0x0001001d 0x004029d1 \\
+0x00400140: & 0x0001001d 0x0001001d \\
+0x00400148: & 0x0001001d\\
 \end{tabular}
 \caption{Interrupt handler vector table}
 \label{table:vector}
@@ -167,7 +170,7 @@ Symbolic execution \cite{jking} is a method of analyzing a program by executing 
 SimuVEX is angr's symbolic execution engine, which tracks the program state using a python based wrapper \cite{pyvex} of the intermediate representation VEX \cite{vex}. The dynamic symbolic execution is based on the techniques described in Mayhem \cite{mayhem} which is more memory efficient than other options, allowing us to execute the firmware long enough for it to populate things like interrupt handlers which may not be present in memory until after boot. Angr supplements Mayhem with the veritesting static symbolic execution system \cite{veritesting} which reduces the execution space when multiple paths would have the same result. Another feature of angr that may be useful is called Under Constrained Symbolic Execution (UCSE) \cite{ucklee2}, which allows individual functions to be analyzed, though at the cost of increased false positives. This feature is implemented in angr as UC-angr, and it is based on a previous tool called UC-KLEE \cite{ucklee1}, which itself was a UCSE enhancement on top of the dynamic symbolic execution tool KLEE \cite{klee}.
 
 \section{Acknowledgements}
-We’d like to thank Prof. Brendan Dolan-Gavitt. In addition to providing us with an interesting project to work on he gave us a considerable head start and guidance throughout. Specifically, Prof. Dolan-Gavitt provided code that generates the vector table for the econotag firmware, the address for that vector table, a unified binary containing the Econotag firmware and ROM, and hooks for instructions in ARM that angr does not recognize. Some of these road blocks could have added days of work to our project so we are grateful for the assist.
+We'd like to thank Prof. Brendan Dolan-Gavitt. In addition to orchestrating this project and the larger project it is a part of, he gave us a considerable head start and guidance throughout. Specifically, Prof. Dolan-Gavitt provided code that generates the vector table for the econotag firmware, several of the addresses that needed to be identified manually, a unified binary containing the Econotag firmware and ROM, and hooks for MSR and MRS instructions in ARM. Some of these road blocks could have added many man-hours to our project so we are grateful for all of his assistance.
 
 \bibliography{references}{}
 \bibliographystyle{plain}
