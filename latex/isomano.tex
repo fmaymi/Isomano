@@ -1,5 +1,6 @@
 \documentclass[letterpaper, 10 pt, conference]{ieeeconf}
 \usepackage{cite}
+\usepackage{hyperref}
 \usepackage{caption}
 \usepackage{multirow}
 
@@ -104,12 +105,54 @@ handler address & number \\ \hline
 \section{Results} \label{results}
 As can be seen in the previous table, our tool identified four distinct handlers in the Econotag firmware at addresses 0x0001001d, 0x00003275, 0x00003f35 and 0x004029d1. Each handler was mapped to exactly one interrupt number, with the exception of the 0x0001001d handler, which was mapped to eight interrupt numbers. This is because 0x0001001d is just a “dummy” function meant as a placeholder for unused interrupt numbers. This handler just returns to the caller and does nothing else. Given that we loaded the interrupt vector table into memory manually, we know that our tool has indeed found all of the expected handlers. In addition, our manual analysis in IDA Pro confirms that the interrupt numbers should range from zero to ten.
 
-Additionally, the program is relatively quick to run. Our code consistently finishes within 1.2 seconds. The prerequisite task of retrieving the vector table, however took over 15 minutes. 
+In terms of performance, the tool runs very fast on this firmware. All the timings were measured on a virtual machine with specs in Table \ref{table:vm}.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{r|l}
+OS & Ubuntu 16.04 LTS \\
+Architecture & 64-bit\\
+Memory & 4GB\\
+Processor &  Intel i5-4690K\\
+Speed &  3.50GHz\\
+Cores &  4\\
+\end{tabular}
+\caption{Virtual machine specs.}
+\label{table:vm}
+\end{table}
+
+Running the tool one hundred times, we found the average runtime to be 0.3668 seconds. In addition, our setup procedures, on average, accounted for only 4.28\% of the runtime, with the actual execution and mapping making 95.61\% of the runtime. Breaking the runtime down in terms of symbolic exploration and constraint solving, symbolic exploration accounted for 51.38\% of the runtime and constraint solving accounted for 44.23\%. These results are summarized in Table \ref{table:time}.
+
+
+\begin{table}[h]
+\centering
+\begin{tabular}{r|l}
+metric & value \\ \hline
+total runtime & 0.36675 s \\
+setup runtime \% & 4.27726\% \\
+execution/mapping \% & 95.61057\% \\
+symbolic exploration \% & 51.37609\% \\
+constrain solving \% & 44.23370\% \\
+\end{tabular}
+\caption{Performance analysis}
+\label{table:time}
+\end{table}
 
 \section{Limitations and Future Work} \label{limits}
-In terms of both functionality and polish, there are a number of modifications that could be made to our tool. In its current state, our program only works with the Econotag (in part because there was a bit of jury rigging needed to make this work), however the method itself is completely general. In theory our tool could be extended to map peripheral interrupt handlers for any embedded system which could in turn be used as part of an emulation system. Of course, the ultimate goal for this tool is for it to support a wide variety of embedded systems without extra tweaking. 
+While the method of analysis we describe in this paper is generalizable in theory, there are a number of practical limitations on generalizing this tool. One of the most problematic of these limitations is the number of addresses that we needed to determine manually. That said, upon completion of our tool we did discover at least one portion of this manual analysis that could be automated and generalized. Instead of manually and statically instructing the tool to begin its exploration at 0x00010810, we could instead have it begin at address 0x00000018 or 0x0000001c. These two addresses are the ARM-specified FIQ and IRQ addresses and they are present in all ARM-based firmwares. Any interrupts would first go through the FIQ or IRQ handlers before being passed to the individual firmware’s interrupt handlers. As such, if we begin execution at either of these addresses, we should reach 0x0001082c (or its equivalent in another firmware) in a timely manner. 
 
-Additionally some usability improvements are necessary to make the tool easier to use on a wider variety of embedded systems. In this vein, we could eliminate the need to know the vector table in advance by executing the firmware symbolically until interrupts are enabled and then proceeding with our current approach (skipping the step where we insert the vector table of course, its already there), however, it takes a considerable amount of time for the symbolic execution to reach the point where interrupts are enabled, adding significant overhead to the already slow program. One way to reduce this time is to store the vector table after it has been generated and insert it if it is available, this way the vector table would only have to be generated once.
+Additionally the need to retrieve the vector table before using our tool makes this harder to use. We could integrate the two processes but generating the vector table is a slow process (see Section \ref{results}). One way to compensate for the delay is to store the vector table after it has been generated the first time. Future uses of the tool on that firmware would load the vector table from a file if available so that the vector table would only have to be generated once.
+
+\section{Code}
+All of our code as well as the Econotag firmware image we used is available on GitHub at:
+
+\url{https://github.com/fmaymi/Isomano}
+
+Our tool is encapsulated by the script map\_handlers.py. At the time of writing, the most recent commit to alter this file was $ace14f6fb68e17863348a989dd45fbd9d1730ffa$. In addition, there is a branch in this repository called timing-instrumentation available at: 
+
+\url{https://github.com/fmaymi/Isomano/tree/timing-instrumentation}
+
+In this branch, map\_handlers.py has been modified (very messily) to time certain portions of the code to produce the metrics seen in Section 3. At the time of writing, the most recent commit altering map\_handlers.py on this branch is $75766a4a70c3a931ee32a30068f2266b6829d366$.
 
 \section{Related Work} \label{relatedWork}
 In the very specific context of our project, we know of no previous work attempting to solve the same problem. That said, there is a large body of existing research into the dynamic analysis of embedded devices and their overall security.
