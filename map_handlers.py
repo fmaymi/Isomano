@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import angr
 import claripy
 from simuvex import o
