@@ -4,7 +4,14 @@ import claripy
 from simuvex import o
 import simuvex
 import capstone
+import time
+from datetime import datetime
 
+s_time = time.time()
+pre_explore_time = 0
+post_explore_time = 0
+pre_constraint_time = 0
+post_constraint_time = 0
 # source: Brendan Dolan-Gavitt, econotag.py
 # setup capstone disasembler
 cs = capstone.Cs(capstone.CS_ARCH_ARM, capstone.CS_MODE_ARM)
@@ -136,6 +143,8 @@ def load_vector_table(state):
 # 
 # output: returns the mapping of numbers to handler addresses
 def get_handler_mapping(p,state):
+    global pre_explore_time, post_explore_time, pre_constraint_time, post_constraint_time
+    pre_explore_time = time.time()
     # setup path and pathgroup
     path = p.factory.path(state)
     pg = p.factory.path_group(path)
@@ -157,7 +166,9 @@ def get_handler_mapping(p,state):
     # step to the next basic block (which in this case we expect to be the
     # interrupt handlers)
     successors = path.step()
+    post_explore_time = time.time()
     
+    pre_constraint_time = time.time()
     # record the mapping of interrupt numbers to handlers
     mapping = {}
     for child in successors:
@@ -178,6 +189,7 @@ def get_handler_mapping(p,state):
             # exhaustive list of all possible resolutions for r0 for the
             # current child's state
             child.state.se.add(r0 != inter_num)
+    post_constraint_time = time.time()
 
     return mapping
 
@@ -225,13 +237,60 @@ def setup():
 
 # main routine
 def main():
+    pre_setup_time = time.time()
     # get project and state
     p,state = setup()
+    post_setup_time = time.time()
     # get mapping of interupt numbers and handlers
+    pre_mapping_time = time.time()
     mapping = get_handler_mapping(p,state)
+    post_mapping_time = time.time()
     # print results
     print("Found the following interupt number and handler mappings:\n")
     for key in mapping:
         print("%s: %s" % (key,", ".join([str(x) for x in mapping[key]])))
+    e_time = time.time()
+    total_time = e_time - s_time
+    setup_time = post_setup_time - pre_setup_time
+    mapping_time = post_mapping_time - pre_mapping_time
+    explore_time = post_explore_time - pre_explore_time
+    constraint_time = post_constraint_time - pre_constraint_time
+    
+    r_set = setup_time/total_time
+    r_map = mapping_time/total_time
+    r_exp = explore_time/total_time
+    r_con = constraint_time/total_time
+
+    d_tot = datetime.fromtimestamp(total_time)
+    d_set = datetime.fromtimestamp(setup_time)
+    d_map = datetime.fromtimestamp(mapping_time)
+    d_exp = datetime.fromtimestamp(explore_time)
+    d_con = datetime.fromtimestamp(constraint_time)
+    # import IPython; IPython.embed()
+
+    p_tot = "100%"
+    p_set = "{0:.0%}".format(r_set)
+    p_map = "{0:.0%}".format(r_map)
+    p_exp = "{0:.0%}".format(r_exp)
+    p_con = "{0:.0%}".format(r_con)
+    # print total_time
+    # print setup_time + mapping_time
+    # print explore_time+constraint_time
+
+    fstring = "%smin %.2fsec (%s)"
+    print("\n")
+    print("Total time: " + fstring % (str(d_tot.minute),get_microsecond(d_tot),p_tot))
+    print("Setup time: " + fstring % (str(d_set.minute),get_microsecond(d_set),p_set))
+    print("Mapping time: " + fstring % (str(d_map.minute),get_microsecond(d_map),p_map))
+    print("\tExplore time: " + fstring % (str(d_exp.minute),get_microsecond(d_exp),p_exp))
+    print("\tConstraint time: " + fstring % (str(d_con.minute),get_microsecond(d_con),p_con))
+    f = open("stats.csv",'a')
+    towrite = [total_time,r_set,r_map,r_exp,r_con]
+    towrite = [str(x) for x in towrite]
+    f.write(",".join(towrite)+"\n")
+    f.close()
+
+def get_microsecond(dt):
+    return dt.second + dt.microsecond/1e+6
 
 main()
